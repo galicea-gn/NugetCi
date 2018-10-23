@@ -5,12 +5,13 @@ function Get-SteppedNugetVersion
     .SYNOPSIS
         Steps the version of a nuget package
     .PARAMETER BasePath
-        Version that will be stepped.        
+        Version that will be stepped.
     .PARAMETER Patch
         Optional. New patch to use if default increment is being bypassed.
     #>
 
     [CmdletBinding()]
+    [OutputType([String])]
     Param(
         [Parameter(Mandatory=$True, Position=0)]
         [String]$Version,
@@ -18,7 +19,7 @@ function Get-SteppedNugetVersion
         [Parameter(Mandatory=$False, Position=1)]
         [String]$Patch
     )
-    
+
     $Parts = $Version.split('.')
     if (![String]::IsNullOrEmpty($Patch)) {
         $Parts[2] = $Patch
@@ -26,7 +27,7 @@ function Get-SteppedNugetVersion
     else {
         $Parts[2]++
     }
-    
+
     return [String]::Join(".", $Parts)
 }
 
@@ -57,7 +58,7 @@ function Get-NugetCiLatestPackageVersion
         [String]$FeedName,
 
         [Parameter(
-            Mandatory=$True, 
+            Mandatory=$True,
             Position=2,
             ValueFromPipeline=$True,
             ValueFromPipelineByPropertyName=$True
@@ -68,7 +69,7 @@ function Get-NugetCiLatestPackageVersion
         [Parameter(Mandatory=$False, Position=2)]
         [PSCredential]$Credential
     )
-    
+
     Begin {
         if ($UrlBase -Contains 'https') {
             add-type @"
@@ -88,22 +89,22 @@ function Get-NugetCiLatestPackageVersion
     Process {
         $FeedUrl   = "$UrlBase/nuget/$FeedName/Packages()?`$filter=Id%20eq%20'$NuGetPackageId'"
         $WebClient = New-Object System.Net.WebClient
-        
+
         if ($Null -ne $Credential) {
             $Basic = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes("$($Credential.GetNetworkCredential().UserName):$($Credential.GetNetworkCredential().Password)"));
             $webClient.Headers["Authorization"] = "Basic $basic"
         }
-        
+
         $QueryResults = [xml]($WebClient.DownloadString($FeedUrl))
-        $Version      = $QueryResults.Feed.Entry | 
+        $Version      = $QueryResults.Feed.Entry |
                         Sort-Object -Property id -Descending |
                         ForEach-Object { $_.Properties.Version } |
                         Select-Object -First 1
-        
+
         if (!$Version) {
             $Version = "0.0.0.0"
         }
-        
+
         return $Version
     }
 }
@@ -118,7 +119,7 @@ function Invoke-NugetCiVersionStepper
         Makes a request to the provided NuGet feed with the package's id to retrieve the latest, real-time version currently avaiable.
         Then replaces the version in the .nuspec for this package with the latest version, incrementing patch by 1.
     .PARAMETER BasePath
-        Directory to use as the base path of the version stepping.        
+        Directory to use as the base path of the version stepping.
     .PARAMETER UrlBase
         Url host and port portions of the nuget feed. Url defaults to https. Might be changed in the future.
     .PARAMETER Credential
@@ -134,7 +135,7 @@ function Invoke-NugetCiVersionStepper
     [CmdletBinding(DefaultParameterSetName='MultiPackage')]
     Param (
         [Parameter(
-            Mandatory=$True, 
+            Mandatory=$True,
             Position=0,
             ParameterSetName='MultiPackage'
         )]
@@ -143,12 +144,12 @@ function Invoke-NugetCiVersionStepper
         [String]$BasePath,
 
         [Parameter(
-            Mandatory=$True, 
+            Mandatory=$True,
             Position=1,
             ParameterSetName='SinglePackage'
         )]
         [Parameter(
-            Mandatory=$True, 
+            Mandatory=$True,
             Position=1,
             ParameterSetName='MultiPackage'
         )]
@@ -156,31 +157,31 @@ function Invoke-NugetCiVersionStepper
         [String]$UrlBase,
 
         [Parameter(
-            Mandatory=$False, 
+            Mandatory=$False,
             Position=2,
             ParameterSetName='SinglePackage'
         )]
         [Parameter(
-            Mandatory=$False, 
+            Mandatory=$False,
             Position=2,
             ParameterSetName='MultiPackage'
         )]
         [PSCredential]$Credential,
 
         [Parameter(
-            Mandatory=$False, 
+            Mandatory=$False,
             Position=3,
             ParameterSetName='SinglePackage'
         )]
         [Parameter(
-            Mandatory=$False, 
+            Mandatory=$False,
             Position=3,
             ParameterSetName='MultiPackage'
         )]
         [String]$Patch,
 
         [Parameter(
-            Mandatory=$True, 
+            Mandatory=$True,
             Position=4,
             ParameterSetName='SinglePackage',
             ValueFromPipeline=$True,
@@ -190,7 +191,7 @@ function Invoke-NugetCiVersionStepper
         [String]$NugetPackageId,
 
         [Parameter(
-            Mandatory=$True, 
+            Mandatory=$True,
             Position=5,
             ParameterSetName='SinglePackage'
         )]
@@ -200,7 +201,7 @@ function Invoke-NugetCiVersionStepper
     )
 
     Process {
-        if ($PsCmdlet.ParameterSetName = 'SinglePackage') {
+        if ($PsCmdlet.ParameterSetName -eq 'SinglePackage') {
             $LastVersion  = Get-NugetCiLatestPackageVersion $UrlBase $_ $Credential
             $Version      = Get-SteppedNugetVersion $LastVersion $Patch
             $Spec         = Get-Content $NuspecPath -Raw
@@ -210,13 +211,13 @@ function Invoke-NugetCiVersionStepper
         else {
             $BasePath   = Resolve-Path $BasePath
             $Nuspecs = (Get-ChildItem $BasePath -Recurse -Include '*.nuspec').FullName | ForEach-Object { Split-Path (Split-Path $_ -Parent) -Leaf }
-        
+
             $Nuspecs | ForEach-Object {
                 $LastVersion  = Get-NugetCiLatestPackageVersion $UrlBase $_ $Credential
                 $Version      = Get-SteppedNugetVersion $LastVersion $Patch
                 $Package      = Get-ChildItem $BasePath -Include "$($_).nuspec" -Recurse
-        
-                $Package | ForEach-Object { 
+
+                $Package | ForEach-Object {
                     $Spec       = Get-Content $_ -Raw
                     $OldVersion = ([Regex]".*<[vV]ersion>(.*)</[vV]ersion>").Match($Spec).Groups[1].Value
                     $Spec.Replace($OldVersion, $Version) | Set-Content $_ -Force
@@ -246,16 +247,16 @@ function Invoke-NugetCiPack
     [CmdletBinding(DefaultParameterSetName='MultiPackage')]
     Param (
         [Parameter(
-            Mandatory=$True, 
+            Mandatory=$True,
             Position=0,
-            ParameterSetName='MultiPackage'    
+            ParameterSetName='MultiPackage'
         )]
         [ValidateScript({ Test-Path $_ -PathType Directory })]
         [Alias('bp', 'p', 'path')]
         [String]$BasePath,
 
         [Parameter(
-            Mandatory=$True, 
+            Mandatory=$True,
             Position=1,
             ParameterSetName='SinglePackage'
         )]
@@ -276,15 +277,15 @@ function Invoke-NugetCiPack
         }
     }
     Process {
-        if ($PsCmdlet.ParameterSetName = 'SinglePackage') {
-            Invoke-Expression "nuget pack $NuspecPath"
+        if ($PsCmdlet.ParameterSetName -eq 'SinglePackage') {
+            nuget pack $NuspecPath
         }
         else {
             $BasePath = Resolve-Path $BasePath
-            (Get-ChildItem $BasePath -Recurse -Include '*.nuspec').FullName | 
-            ForEach-Object { Split-Path (Split-Path $_ -Parent) -Leaf } | 
+            (Get-ChildItem $BasePath -Recurse -Include '*.nuspec').FullName |
+            ForEach-Object { Split-Path (Split-Path $_ -Parent) -Leaf } |
             ForEach-Object {
-                Invoke-Expression "nuget pack $($_)"
+                nuget pack $_
             }
         }
     }
@@ -300,7 +301,7 @@ function Invoke-NugetCiPush
         Pushes the .nupkg.
         Or, does this for the single package specified
     .PARAMETER BasePath
-        Directory to use as the base path of the pushing.        
+        Directory to use as the base path of the pushing.
     .PARAMETER Source
         Url of the nuget feed, or name of configured source.
     .PARAMETER Credential
@@ -314,21 +315,21 @@ function Invoke-NugetCiPush
     [CmdletBinding(DefaultParameterSetName='MultiPackage')]
     Param (
         [Parameter(
-            Mandatory=$True, 
+            Mandatory=$True,
             Position=0,
-            ParameterSetName='MultiPackage'    
+            ParameterSetName='MultiPackage'
         )]
         [ValidateScript({ Test-Path $_ -PathType Directory })]
         [Alias('bp', 'p', 'path')]
         [String]$BasePath,
 
         [Parameter(
-            Mandatory=$True, 
+            Mandatory=$True,
             Position=1,
             ParameterSetName='SinglePackage'
         )]
         [Parameter(
-            Mandatory=$True, 
+            Mandatory=$True,
             Position=1,
             ParameterSetName='MultiPackage'
         )]
@@ -336,19 +337,19 @@ function Invoke-NugetCiPush
         [String]$Source,
 
         [Parameter(
-            Mandatory=$False, 
+            Mandatory=$False,
             Position=2,
             ParameterSetName='SinglePackage'
         )]
         [Parameter(
-            Mandatory=$False, 
+            Mandatory=$False,
             Position=2,
             ParameterSetName='MultiPackage'
         )]
         [PSCredential]$Credential,
 
         [Parameter(
-            Mandatory=$True, 
+            Mandatory=$True,
             Position=3,
             ParameterSetName='SinglePackage'
         )]
@@ -371,15 +372,15 @@ function Invoke-NugetCiPush
     Process {
         $ApiKey = $Credential.GetNetworkCredential().Password
 
-        if ($PsCmdlet.ParameterSetName = 'SinglePackage') {
-            Invoke-Expression "nuget push $NupkgPath -Source $Source -ApiKey $ApiKey"
+        if ($PsCmdlet.ParameterSetName -eq 'SinglePackage') {
+            nuget push $NupkgPath -Source $Source -ApiKey $ApiKey
         }
         else {
             $BasePath = Resolve-Path $BasePath
-            (Get-ChildItem $BasePath -Recurse -Include '*.nupkg').FullName | 
-            ForEach-Object { Split-Path (Split-Path $_ -Parent) -Leaf } | 
+            (Get-ChildItem $BasePath -Recurse -Include '*.nupkg').FullName |
+            ForEach-Object { Split-Path (Split-Path $_ -Parent) -Leaf } |
             ForEach-Object {
-                Invoke-Expression "nuget push $($_) -Source $Source -ApiKey $ApiKey"
+                nuget push $_ -Source $Source -ApiKey $ApiKey
             }
         }
     }
@@ -395,7 +396,7 @@ function Invoke-NugetCi
         Steps the package's local nuspec version to +1 patch of latest in source, packs it, and then pushes it.
         Or does this for the single package passed by $NugetPackageId.
     .PARAMETER BasePath
-        Directory to use as the base path of the version stepping, packing, and pushing.        
+        Directory to use as the base path of the version stepping, packing, and pushing.
     .PARAMETER UrlBase
         Url host and port portions of the nuget feed. Url defaults to https.
     .PARAMETER Credential
@@ -411,7 +412,7 @@ function Invoke-NugetCi
     [CmdletBinding(DefaultParameterSetName='MultiPackage')]
     Param (
         [Parameter(
-            Mandatory=$True, 
+            Mandatory=$True,
             Position=0,
             ParameterSetName='MultiPackage'
         )]
@@ -420,12 +421,12 @@ function Invoke-NugetCi
         [String]$BasePath,
 
         [Parameter(
-            Mandatory=$True, 
+            Mandatory=$True,
             Position=1,
             ParameterSetName='SinglePackage'
         )]
         [Parameter(
-            Mandatory=$True, 
+            Mandatory=$True,
             Position=1,
             ParameterSetName='MultiPackage'
         )]
@@ -433,31 +434,31 @@ function Invoke-NugetCi
         [String]$UrlBase,
 
         [Parameter(
-            Mandatory=$False, 
+            Mandatory=$False,
             Position=2,
             ParameterSetName='SinglePackage'
         )]
         [Parameter(
-            Mandatory=$False, 
+            Mandatory=$False,
             Position=2,
             ParameterSetName='MultiPackage'
         )]
         [PSCredential]$Credential,
 
         [Parameter(
-            Mandatory=$False, 
+            Mandatory=$False,
             Position=3,
             ParameterSetName='SinglePackage'
         )]
         [Parameter(
-            Mandatory=$False, 
+            Mandatory=$False,
             Position=3,
             ParameterSetName='MultiPackage'
         )]
         [String]$Patch,
 
         [Parameter(
-            Mandatory=$True, 
+            Mandatory=$True,
             Position=4,
             ParameterSetName='SinglePackage',
             ValueFromPipeline=$True,
@@ -467,7 +468,7 @@ function Invoke-NugetCi
         [String]$NugetPackageId,
 
         [Parameter(
-            Mandatory=$True, 
+            Mandatory=$True,
             Position=5,
             ParameterSetName='SinglePackage'
         )]
@@ -495,7 +496,7 @@ function Invoke-NugetCi
             NuspecPath     = $NuspecPath
         }
 
-        if ($PsCmdlet.ParameterSetName = 'SinglePackage') {
+        if ($PsCmdlet.ParameterSetName -eq 'SinglePackage') {
             Invoke-NugetCiVersionStepper @Params -Credential $Credential
             Invoke-NugetCiPack -NuspecPath $Params.NuspecPath
 
@@ -511,7 +512,7 @@ function Invoke-NugetCi
     }
 }
 
-function Invoke-NugetCiInstall 
+function Invoke-NugetCiInstall
 {
     <#
     .SYNOPSIS
@@ -540,6 +541,6 @@ function Invoke-NugetCiInstall
         if ($InstallPath -eq 'C:\Nuget') {
             $InstallPath = '\nuget'
         }
-        Invoke-Expression -Command 'sudo apt install nuget'
+        sudo apt install nuget
     }
 }
