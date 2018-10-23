@@ -1,0 +1,30 @@
+resources:
+- repo: self
+queue:
+  name: Hosted VS2017
+trigger:
+  branches:
+    include:
+      - master
+
+steps:
+- powershell: |
+    ./build.ps1 -Ci -BuildId $Env:BUILD_BUILDID -Token $(GITHUB) -PublishApiKey $(PS_TOKEN) -PublishSource $(PS_SOURCE) -Verbose
+  displayName: Run CI
+  workingDirectory: $(Build.SourcesDirectory)
+  env:
+    GITHUB: $(GITHUB)
+    PS_TOKEN: $(PS_TOKEN)
+- task: PublishTestResults@2
+  displayName: 'Publish Test Results'
+  inputs:
+    testResultsFiles: '$(Build.SourcesDirectory)\Tests\TestResults.xml'
+    testRunTitle: 'Unit Tests : $(Build.DefinitionName)'
+  enabled: false
+- task: PublishCodeCoverageResults@1
+  displayName: 'Publish Code Coverage Results'
+  inputs:
+    codeCoverageTool: JaCoCo
+    summaryFileLocation: '$(Build.SourcesDirectory)\Tests\CodeCoverage.xml'
+    reportDirectory: '$(Build.SourcesDirectory)\Tests\CodeCoverage.xml'
+  enabled: false
