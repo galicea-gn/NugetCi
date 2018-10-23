@@ -9,7 +9,7 @@ trigger:
 
 steps:
 - powershell: |
-    ./build.ps1 -Ci -BuildId $Env:BUILD_BUILDID -Token $(GITHUB) -PublishApiKey $(PS_TOKEN) -PublishSource $(PS_SOURCE) -Verbose
+    ./build.ps1 -Ci -BuildId $Env:BUILD_BUILDID -GithubToken $(GITHUB) -PublishApiKey $(PS_TOKEN) -PublishSource $(PS_SOURCE) -Verbose
   displayName: Run CI
   workingDirectory: $(Build.SourcesDirectory)
   env:
