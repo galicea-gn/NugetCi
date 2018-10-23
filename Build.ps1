@@ -119,8 +119,8 @@ if ($Ci) {
 
     if ($Publish) {
         Write-Verbose "Publishing NugetCi to PS Gallery..."
-        $Manifest = (Get-Content (Join-Path (Split-Path $PSScriptRoot -Parent) "NugetCi\NugetCi.psd1") -Raw)
-        $Manifest.Replace("[[COMMIT_HASH]]", $Env:BUILD_SOURCEVERSION) | Set-Content (Join-Path (Split-Path $PSScriptRoot -Parent) "NugetCi\NugetCi.psd1") -Force
-        Publish-Module -Path (Join-Path (Split-Path $PSScriptRoot -Parent) "NugetCi") -NuGetApiKey $PublishApiKey -Repository $PublishSource -Force
+        $Manifest = Get-Content "$PSScriptRoot\NugetCi\NugetCi.psd1" -Raw
+        $Manifest.Replace("[[COMMIT_HASH]]", $Env:BUILD_SOURCEVERSION) | Set-Content "$PSSCriptRoot\NugetCi\NugetCi.psd1" -Force
+        Publish-Module -Path "$PSSCriptRoot\NugetCi" -NuGetApiKey $PublishApiKey -Repository $PublishSource -Force
     }
 }
