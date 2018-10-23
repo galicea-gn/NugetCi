@@ -85,7 +85,7 @@ if ($Ci) {
         $Manifest.Replace($OldVersion, $NewVersion -Join '.') | Set-Content $_ -Force
     }
 
-    $NewCoverage = "$(($TestResults.CodeCoverage.NumberOfCommandsExecuted/$TestResults.CodeCoverage.NumberOfCommandsAnalyzed * 100).ToString().SubString(0, 5))%"
+    $NewCoverage = "0%"#"$(($TestResults.CodeCoverage.NumberOfCommandsExecuted/$TestResults.CodeCoverage.NumberOfCommandsAnalyzed * 100).ToString().SubString(0, 5))%"
     $ReadMe      = Get-Content "$PSScriptRoot\..\README.md" -Raw
 
     if ($NewCoverage -ge 90) {
