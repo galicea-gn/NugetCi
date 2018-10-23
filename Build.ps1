@@ -102,7 +102,7 @@ if ($Ci) {
     }
 
     $ReadMe = $ReadMe.Replace(([Regex] "!\[Coverage\]\(.*\)").Match($ReadMe).Value, "![Coverage](https://img.shields.io/badge/Coverage-$($NewCoverage)25-$($Color).svg)")
-    $ReadMe | Set-Content "$PSScriptRoot\..\README.md" -Force
+    $ReadMe | Set-Content "$PSScriptRoot\README.md" -Force
 
     Write-Verbose "Updating ReadMe and Manifests..."
     Add-Content "$HOME\.git-credentials" "https://$($GithubToken):x-oauth-basic@github.com`n"
