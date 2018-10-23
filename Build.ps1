@@ -20,14 +20,21 @@ param(
         Position=2,
         ParameterSetName='Ci'
     )]
-    [String]$Token,
+    [String]$GithubToken,
 
     [Parameter(
         Mandatory=$True,
         Position=2,
         ParameterSetName='Ci'
     )]
-    [String]$PsGalleryToken
+    [String]$PublishApiKey,
+
+    [Parameter(
+        Mandatory=$True,
+        Position=3,
+        ParameterSetName='Ci'
+    )]
+    [String]$PublishSource
 )
 
 Write-Verbose "Ensuring required modules are available."
@@ -96,10 +103,10 @@ if ($Ci) {
     $ReadMe | Set-Content "$PSScriptRoot\..\README.md" -Force
 
     Write-Verbose "Updating ReadMe and Manifests..."
-    Add-Content "$HOME\.git-credentials" "https://github.com/galicea-gn/NugetCi.git`n"
+    Add-Content "$HOME\.git-credentials" "https://$($GithubToken):x-oauth-basic@github.com`n"
     Invoke-Expression -Command "git config --global credential.helper store"
-    Invoke-Expression -Command "git config --global user.email nuget-ci@golfchannel.com"
-    Invoke-Expression -Command "git config --global user.name nuget-ci-build"
+    Invoke-Expression -Command "git config --global user.email nuget-ci-builder@golfchannel.lifestyle.builds.com"
+    Invoke-Expression -Command "git config --global user.name nuget-ci-builder"
     Invoke-Expression -Command "git config core.autocrlf false -q"
     Invoke-Expression -Command "git checkout -b $($Env:BUILD_SOURCEBRANCHNAME) --track origin/$($Env:BUILD_SOURCEBRANCHNAME) -q"
     Invoke-Expression -Command "git pull origin $($Env:BUILD_SOURCEBRANCHNAME) -q"
@@ -112,6 +119,6 @@ if ($Ci) {
         Write-Verbose "Publishing NugetCi to PS Gallery..."
         $Manifest = (Get-Content (Join-Path (Split-Path $PSScriptRoot -Parent) "NugetCi\NugetCi.psd1") -Raw)
         $Manifest.Replace("[[COMMIT_HASH]]", $Env:BUILD_SOURCEVERSION) | Set-Content (Join-Path (Split-Path $PSScriptRoot -Parent) "NugetCi\NugetCi.psd1") -Force
-        Publish-Module -Path (Join-Path (Split-Path $PSScriptRoot -Parent) "NugetCi") -NuGetApiKey $PsGalleryToken -Force
+        Publish-Module -Path (Join-Path (Split-Path $PSScriptRoot -Parent) "NugetCi") -NuGetApiKey $PublishApiKey -Repository $PublishSource -Force
     }
 }
